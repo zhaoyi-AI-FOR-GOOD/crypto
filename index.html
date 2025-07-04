@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>加密货币综合分析平台</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700&family=Roboto+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- 侧边栏导航 -->
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">₿</div>
+                <h1 class="sidebar-title">CryptoAnalyzer</h1>
+            </div>
+            
+            <div class="sidebar-nav">
+                <div class="nav-group">
+                    <div class="nav-group-title">市场分析</div>
+                    <a href="#" class="nav-item active" data-tab="market">
+                        <div class="nav-icon">📊</div>
+                        <span class="nav-label">市场概览</span>
+                    </a>
+                    <a href="#" class="nav-item" data-tab="sentiment">
+                        <div class="nav-icon">💭</div>
+                        <span class="nav-label">市场情绪</span>
+                    </a>
+                    <a href="#" class="nav-item" data-tab="analysis">
+                        <div class="nav-icon">📈</div>
+                        <span class="nav-label">技术分析</span>
+                    </a>
+                    <a href="#" class="nav-item" data-tab="options">
+                        <div class="nav-icon">⚡</div>
+                        <span class="nav-label">期权市场</span>
+                        <span class="nav-badge">Beta</span>
+                    </a>
+                </div>
+                
+                <div class="nav-group">
+                    <div class="nav-group-title">投资管理</div>
+                    <a href="#" class="nav-item" data-tab="portfolio">
+                        <div class="nav-icon">💼</div>
+                        <span class="nav-label">投资组合</span>
+                    </a>
+                    <a href="#" class="nav-item" data-tab="discovery">
+                        <div class="nav-icon">🔍</div>
+                        <span class="nav-label">新币发现</span>
+                    </a>
+                </div>
+                
+                <div class="nav-group">
+                    <div class="nav-group-title">生态系统</div>
+                    <a href="#" class="nav-item" data-tab="defi">
+                        <div class="nav-icon">🏦</div>
+                        <span class="nav-label">DeFi</span>
+                    </a>
+                    <a href="#" class="nav-item" data-tab="nft">
+                        <div class="nav-icon">🖼️</div>
+                        <span class="nav-label">NFT</span>
+                    </a>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 主内容区域 -->
+        <main class="main-content">
+            <!-- 顶部工具栏 -->
+            <div class="top-toolbar">
+                <div class="toolbar-left">
+                    <button class="sidebar-toggle" id="sidebar-toggle">
+                        <div class="nav-icon">☰</div>
+                    </button>
+                    
+                    <div class="global-search">
+                        <div class="search-icon">🔍</div>
+                        <input type="text" class="search-input" placeholder="搜索加密货币、合约或指标...">
+                    </div>
+                </div>
+                
+                <div class="toolbar-right">
+                    <div class="market-status">
+                        <div class="status-indicator"></div>
+                        <span class="status-text">实时连接</span>
+                    </div>
+                    
+                    <div class="current-time" id="current-time">--:--:--</div>
+                    
+                    <button id="refresh-btn" class="btn btn-ghost">
+                        <div class="nav-icon">🔄</div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 内容面板区域 -->
+            <div class="content-panels">
+                <div class="panel-grid" id="panel-grid">
+
+                    <!-- 市场概览面板 -->
+                    <div class="tab-content active" id="market-tab">
+                        <div class="panel" style="grid-column: span 12;">
+                            <div class="panel-header">
+                                <div class="panel-title">
+                                    <div class="nav-icon">📊</div>
+                                    市场概览
+                                    <div class="panel-subtitle">主要加密货币实时价格</div>
+                                </div>
+                                <div class="panel-actions">
+                                    <button class="panel-action" title="刷新数据">
+                                        <div class="nav-icon">🔄</div>
+                                    </button>
+                                    <button class="panel-action" title="设置">
+                                        <div class="nav-icon">⚙️</div>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="panel-content">
+                                <div class="crypto-grid" id="crypto-grid">
+                                    <!-- 加密货币卡片将在这里动态生成 -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 市场情绪面板 -->
+                    <div class="tab-content" id="sentiment-tab">
+                        <div class="panel" style="grid-column: span 6;">
+                            <div class="panel-header">
+                                <div class="panel-title">
+                                    <div class="nav-icon">📊</div>
+                                    全球市场统计
+                                </div>
+                            </div>
+                            <div class="panel-content">
+                                <div class="stat-item">
+                                    <span class="stat-label">总市值</span>
+                                    <span class="stat-value" id="total-market-cap">-</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">24h交易量</span>
+                                    <span class="stat-value" id="total-volume">-</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">比特币主导率</span>
+                                    <span class="stat-value" id="btc-dominance">-</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="panel" style="grid-column: span 6;">
+                            <div class="panel-header">
+                                <div class="panel-title">
+                                    <div class="nav-icon">🔥</div>
+                                    热门搜索
+                                </div>
+                            </div>
+                            <div class="panel-content">
+                                <div class="trending-list" id="trending-list">
+                                    <!-- 热门搜索将在这里生成 -->
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="panel" style="grid-column: span 6;">
+                            <div class="panel-header">
+                                <div class="panel-title">
+                                    <div class="nav-icon">📈</div>
+                                    今日涨幅榜
+                                </div>
+                            </div>
+                            <div class="panel-content">
+                                <div class="top-list" id="top-gainers">
+                                    <!-- 涨幅榜将在这里生成 -->
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="panel" style="grid-column: span 6;">
+                            <div class="panel-header">
+                                <div class="panel-title">
+                                    <div class="nav-icon">📉</div>
+                                    今日跌幅榜
+                                </div>
+                            </div>
+                            <div class="panel-content">
+                                <div class="top-list" id="top-losers">
+                                    <!-- 跌幅榜将在这里生成 -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 投资组合面板 -->
+                    <div class="tab-content" id="portfolio-tab">
+                        <div class="panel" style="grid-column: span 12;">
+                            <div class="panel-header">
+                                <div class="panel-title">
+                                    <div class="nav-icon">💼</div>
+                                    我的投资组合
+                                </div>
+                                <div class="panel-actions">
+                                    <button class="btn btn-primary" id="add-holding-btn">
+                                        <div class="nav-icon">➕</div>
+                                        添加持仓
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="panel-content">
+                                <div class="portfolio-summary">
+                                    <div class="summary-card">
+                                        <h4>总估值</h4>
+                                        <div class="value" id="portfolio-value">$0.00</div>
+                                    </div>
+                                    <div class="summary-card">
+                                        <h4>今日盈亏</h4>
+                                        <div class="value" id="portfolio-daily-change">+$0.00</div>
+                                    </div>
+                                    <div class="summary-card">
+                                        <h4>总盈亏</h4>
+                                        <div class="value" id="portfolio-total-change">+$0.00</div>
+                                    </div>
+                                </div>
+                                <div class="holdings-list" id="holdings-list">
+                                    <!-- 持仓列表将在这里生成 -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 技术分析面板 -->
+                    <div class="tab-content" id="analysis-tab">
+                        <div class="panel" style="grid-column: span 8;">
+                            <div class="panel-header">
+                                <div class="panel-title">
+                                    <div class="nav-icon">📈</div>
+                                    价格图表
+                                </div>
+                                <div class="panel-actions">
+                                    <select id="analysis-coin-select" class="btn btn-ghost">
+                                        <option value="bitcoin">比特币 (BTC)</option>
+                                        <option value="ethereum">以太坊 (ETH)</option>
+                                        <option value="binancecoin">币安币 (BNB)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="panel-content">
+                                <div class="chart-container">
+                                    <div class="chart-placeholder" id="price-chart">
+                                        <p>📊 价格图表将在这里显示</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="panel" style="grid-column: span 4;">
+                            <div class="panel-header">
+                                <div class="panel-title">
+                                    <div class="nav-icon">📊</div>
+                                    技术指标
+                                </div>
+                            </div>
+                            <div class="panel-content">
+                                <div class="indicators">
+                                    <div class="indicator-card">
+                                        <h4>RSI</h4>
+                                        <div class="indicator-value" id="rsi-value">-</div>
+                                    </div>
+                                    <div class="indicator-card">
+                                        <h4>MACD</h4>
+                                        <div class="indicator-value" id="macd-value">-</div>
+                                    </div>
+                                    <div class="indicator-card">
+                                        <h4>移动平均</h4>
+                                        <div class="indicator-value" id="ma-value">-</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- DeFi面板 -->
+                    <div class="tab-content" id="defi-tab">
+                        <div class="panel" style="grid-column: span 12;">
+                            <div class="panel-header">
+                                <div class="panel-title">
+                                    <div class="nav-icon">🏦</div>
+                                    DeFi 生态系统
+                                </div>
+                            </div>
+                            <div class="panel-content">
+                                <div class="defi-stats">
+                                    <div class="stat-card">
+                                        <h4>总锁定价值 (TVL)</h4>
+                                        <div class="stat-value" id="defi-tvl">-</div>
+                                    </div>
+                                    <div class="stat-card">
+                                        <h4>DeFi 主导率</h4>
+                                        <div class="stat-value" id="defi-dominance">-</div>
+                                    </div>
+                                </div>
+                                <div class="defi-protocols" id="defi-protocols">
+                                    <!-- DeFi协议列表将在这里生成 -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- NFT面板 -->
+                    <div class="tab-content" id="nft-tab">
+                        <div class="panel" style="grid-column: span 12;">
+                            <div class="panel-header">
+                                <div class="panel-title">
+                                    <div class="nav-icon">🖼️</div>
+                                    NFT 市场监控
+                                </div>
+                            </div>
+                            <div class="panel-content">
+                                <div class="nft-stats">
+                                    <div class="stat-card">
+                                        <h4>市场总值</h4>
+                                        <div class="stat-value" id="nft-market-cap">-</div>
+                                    </div>
+                                    <div class="stat-card">
+                                        <h4>24h交易量</h4>
+                                        <div class="stat-value" id="nft-volume">-</div>
+                                    </div>
+                                </div>
+                                <div class="nft-collections" id="nft-collections">
+                                    <!-- NFT收藏品列表将在这里生成 -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 新币发现面板 -->
+                    <div class="tab-content" id="discovery-tab">
+                        <div class="panel" style="grid-column: span 12;">
+                            <div class="panel-header">
+                                <div class="panel-title">
+                                    <div class="nav-icon">🔍</div>
+                                    新币发现
+                                </div>
+                                <div class="panel-actions">
+                                    <select id="discovery-filter" class="btn btn-ghost">
+                                        <option value="new">最新上市</option>
+                                        <option value="volume">交易量激增</option>
+                                        <option value="price">价格异动</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="panel-content">
+                                <div class="new-coins-list" id="new-coins-list">
+                                    <!-- 新币列表将在这里生成 -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 期权市场面板 -->
+                    <div class="tab-content" id="options-tab">
+                        <div class="panel" style="grid-column: span 6;">
+                            <div class="panel-header">
+                                <div class="panel-title">
+                                    <div class="nav-icon">🟠</div>
+                                    BTC 期权
+                                </div>
+                            </div>
+                            <div class="panel-content">
+                                <div class="underlying-price" id="btc-underlying-price">$0</div>
+                                <div class="card-metrics">
+                                    <div class="metric">
+                                        <span class="metric-label">隐含波动率</span>
+                                        <span class="metric-value" id="btc-iv">-%</span>
+                                    </div>
+                                    <div class="metric">
+                                        <span class="metric-label">未平仓量</span>
+                                        <span class="metric-value" id="btc-open-interest">-</span>
+                                    </div>
+                                    <div class="metric">
+                                        <span class="metric-label">Put/Call比</span>
+                                        <span class="metric-value" id="btc-put-call-ratio">-</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="panel" style="grid-column: span 6;">
+                            <div class="panel-header">
+                                <div class="panel-title">
+                                    <div class="nav-icon">🔷</div>
+                                    ETH 期权
+                                </div>
+                            </div>
+                            <div class="panel-content">
+                                <div class="underlying-price" id="eth-underlying-price">$0</div>
+                                <div class="card-metrics">
+                                    <div class="metric">
+                                        <span class="metric-label">隐含波动率</span>
+                                        <span class="metric-value" id="eth-iv">-%</span>
+                                    </div>
+                                    <div class="metric">
+                                        <span class="metric-label">未平仓量</span>
+                                        <span class="metric-value" id="eth-open-interest">-</span>
+                                    </div>
+                                    <div class="metric">
+                                        <span class="metric-label">Put/Call比</span>
+                                        <span class="metric-value" id="eth-put-call-ratio">-</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="panel" style="grid-column: span 12;">
+                            <div class="panel-header">
+                                <div class="panel-title">
+                                    <div class="nav-icon">📊</div>
+                                    期权链
+                                </div>
+                                <div class="panel-actions">
+                                    <select id="options-currency" class="btn btn-ghost">
+                                        <option value="BTC">比特币 (BTC)</option>
+                                        <option value="ETH">以太坊 (ETH)</option>
+                                    </select>
+                                    <select id="options-expiry" class="btn btn-ghost">
+                                        <option value="all">全部</option>
+                                    </select>
+                                    <select id="options-type" class="btn btn-ghost">
+                                        <option value="all">全部</option>
+                                        <option value="call">看涨 (Call)</option>
+                                        <option value="put">看跌 (Put)</option>
+                                    </select>
+                                    <button id="options-refresh-btn" class="btn btn-primary">
+                                        <div class="nav-icon">🔄</div>
+                                        刷新
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="panel-content">
+                                <div class="chain-loading" id="options-loading" style="display: none;">
+                                    <div class="loading-container">
+                                        <div class="loading-spinner"></div>
+                                        <div class="loading-text">正在加载期权数据...</div>
+                                    </div>
+                                </div>
+                                <div class="options-chain" id="options-chain">
+                                    <!-- 期权链数据将在这里生成 -->
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="panel" style="grid-column: span 6;">
+                            <div class="panel-header">
+                                <div class="panel-title">
+                                    <div class="nav-icon">🔥</div>
+                                    最活跃期权
+                                </div>
+                            </div>
+                            <div class="panel-content">
+                                <div class="active-options-list" id="active-options-list">
+                                    <!-- 最活跃期权列表将在这里生成 -->
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="panel" style="grid-column: span 6;">
+                            <div class="panel-header">
+                                <div class="panel-title">
+                                    <div class="nav-icon">📈</div>
+                                    波动率分析
+                                </div>
+                            </div>
+                            <div class="panel-content">
+                                <div class="volatility-chart" id="volatility-chart">
+                                    <p>波动率分析图表将在这里显示</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </main>
+        
+        <div class="loading" id="loading">
+            <div class="loading-container">
+                <div class="loading-spinner"></div>
+                <div class="loading-text">正在加载数据...</div>
+            </div>
+        </div>
+
+        <div class="error" id="error" style="display: none;">
+            <div class="error-container">
+                <div class="error-icon">⚠️</div>
+                <div class="error-message">数据加载失败</div>
+                <div class="error-details">请稍后重试</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script src="sentiment.js"></script>
+    <script src="portfolio.js"></script>
+    <script src="analysis.js"></script>
+    <script src="defi.js"></script>
+    <script src="nft.js"></script>
+    <script src="discovery.js"></script>
+    <script src="options.js"></script>
+</body>
+</html>
