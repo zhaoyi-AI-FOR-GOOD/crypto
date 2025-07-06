@@ -12,7 +12,7 @@ class CryptoDashboard {
         this.setupEventListeners();
         this.setupTabSwitching();
         this.startMarketStatusMonitoring();
-        this.loadData();
+        this.loadOptionsData();
         this.startAutoUpdate();
         
         // 显示快捷键提示（首次访问）
@@ -27,7 +27,7 @@ class CryptoDashboard {
                 console.log('Ctrl+K - 搜索');
                 console.log('Ctrl+R - 刷新数据');
                 console.log('Ctrl+B - 折叠侧边栏');
-                console.log('1-8 - 切换面板');
+                console.log('1-2 - 切换面板');
                 
                 localStorage.setItem('shortcuts-hint-shown', 'true');
             }, 3000);
@@ -37,7 +37,7 @@ class CryptoDashboard {
     setupEventListeners() {
         const refreshBtn = document.getElementById('refresh-btn');
         if (refreshBtn) {
-            refreshBtn.addEventListener('click', () => this.loadData());
+            refreshBtn.addEventListener('click', () => this.loadOptionsData());
         }
 
         // 全局搜索功能
@@ -98,29 +98,21 @@ class CryptoDashboard {
 
     loadTabData(tab) {
         switch (tab) {
-            case 'market':
-                this.loadData();
-                break;
             case 'sentiment':
                 this.loadSentimentData();
                 break;
-            case 'portfolio':
-                this.loadPortfolioData();
-                break;
-            case 'analysis':
-                this.loadAnalysisData();
-                break;
-            case 'defi':
-                this.loadDefiData();
-                break;
-            case 'nft':
-                this.loadNftData();
-                break;
-            case 'discovery':
-                this.loadDiscoveryData();
-                break;
             case 'options':
                 this.loadOptionsData();
+                break;
+            case 'strategy':
+                if (window.strategyAnalyzer) {
+                    window.strategyAnalyzer.loadMarketData();
+                }
+                break;
+            case 'arbitrage':
+                if (window.arbitrageScanner) {
+                    window.arbitrageScanner.loadMarketData();
+                }
                 break;
         }
     }
@@ -230,36 +222,6 @@ class CryptoDashboard {
         });
     }
 
-    loadPortfolioData() {
-        // 使用投资组合管理器渲染数据
-        if (window.portfolioManager) {
-            window.portfolioManager.renderPortfolio();
-        }
-    }
-
-    loadAnalysisData() {
-        if (window.technicalAnalyzer) {
-            window.technicalAnalyzer.loadAnalysisData();
-        }
-    }
-
-    loadDefiData() {
-        if (window.defiDashboard) {
-            window.defiDashboard.loadDefiData();
-        }
-    }
-
-    loadNftData() {
-        if (window.nftDashboard) {
-            window.nftDashboard.loadNftData();
-        }
-    }
-
-    loadDiscoveryData() {
-        if (window.coinDiscovery) {
-            window.coinDiscovery.loadDiscoveryData();
-        }
-    }
 
     loadOptionsData() {
         if (window.optionMarket) {
@@ -267,111 +229,6 @@ class CryptoDashboard {
         }
     }
 
-    async loadData() {
-        try {
-            this.showLoading();
-            const response = await fetch(
-                `${this.apiUrl}?ids=${this.cryptoIds.join(',')}&vs_currency=usd&order=market_cap_desc&per_page=20&page=1&sparkline=false&price_change_percentage=24h`
-            );
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            this.renderCryptoCards(data);
-            this.updateLastUpdatedTime();
-            this.hideLoading();
-            this.hideError();
-        } catch (error) {
-            console.error('获取数据失败:', error);
-            this.showError();
-            this.hideLoading();
-        }
-    }
-
-    renderCryptoCards(cryptos) {
-        const grid = document.getElementById('crypto-grid');
-        if (!grid) return;
-        
-        grid.innerHTML = '';
-
-        cryptos.forEach(crypto => {
-            const card = this.createCryptoCard(crypto);
-            grid.appendChild(card);
-        });
-    }
-
-    createCryptoCard(crypto) {
-        const card = document.createElement('div');
-        card.className = 'crypto-card panel';
-        
-        const priceChange = crypto.price_change_percentage_24h || 0;
-        const changeClass = priceChange >= 0 ? 'change-positive' : 'change-negative';
-        const changeIcon = priceChange >= 0 ? '↗' : '↘';
-        
-        card.innerHTML = `
-            <div class="panel-header">
-                <div class="panel-title">
-                    <img src="${crypto.image}" alt="${crypto.name}" class="crypto-icon">
-                    <div class="crypto-name">
-                        <span>${crypto.name}</span>
-                        <div class="panel-subtitle">${crypto.symbol.toUpperCase()}</div>
-                    </div>
-                </div>
-                <div class="panel-actions">
-                    <button class="panel-action" title="查看详情">
-                        <div class="nav-icon">📊</div>
-                    </button>
-                </div>
-            </div>
-            
-            <div class="panel-content">
-                <div class="crypto-price">
-                    $${this.formatPrice(crypto.current_price)}
-                </div>
-                
-                <div class="crypto-stats">
-                    <div class="stat">
-                        <div class="stat-label">24h变化</div>
-                        <div class="stat-value ${changeClass}">
-                            ${changeIcon} ${priceChange.toFixed(2)}%
-                        </div>
-                    </div>
-                    <div class="stat">
-                        <div class="stat-label">24h最高</div>
-                        <div class="stat-value">
-                            $${this.formatPrice(crypto.high_24h)}
-                        </div>
-                    </div>
-                    <div class="stat">
-                        <div class="stat-label">24h最低</div>
-                        <div class="stat-value">
-                            $${this.formatPrice(crypto.low_24h)}
-                        </div>
-                    </div>
-                    <div class="stat">
-                        <div class="stat-label">市值</div>
-                        <div class="stat-value">
-                            $${this.formatMarketCap(crypto.market_cap)}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        // 添加点击事件
-        card.addEventListener('click', () => {
-            this.showCryptoDetails(crypto);
-        });
-        
-        return card;
-    }
-
-    showCryptoDetails(crypto) {
-        console.log('显示加密货币详情:', crypto.name);
-        // 可以后续扩展为模态框或详情页面
-    }
 
     formatPrice(price) {
         if (price < 1) {
@@ -442,20 +299,17 @@ class CryptoDashboard {
     performSmartSearch(query) {
         // 智能搜索逻辑
         const searchMappings = {
-            'btc': 'market',
-            'bitcoin': 'market', 
-            '比特币': 'market',
-            'eth': 'market',
-            'ethereum': 'market',
-            '以太坊': 'market',
+            'btc': 'options',
+            'bitcoin': 'options', 
+            '比特币': 'options',
+            'eth': 'options',
+            'ethereum': 'options',
+            '以太坊': 'options',
             'option': 'options',
             '期权': 'options',
-            'defi': 'defi',
-            'nft': 'nft',
-            'portfolio': 'portfolio',
-            '投资组合': 'portfolio',
-            '技术分析': 'analysis',
-            'analysis': 'analysis'
+            'sentiment': 'sentiment',
+            '情绪': 'sentiment',
+            '市场': 'sentiment'
         };
 
         for (const [keyword, tab] of Object.entries(searchMappings)) {
@@ -505,7 +359,7 @@ class CryptoDashboard {
                     break;
                 case 'r': // Ctrl+R 刷新数据
                     e.preventDefault();
-                    this.loadData();
+                    this.loadOptionsData();
                     break;
                 case 'b': // Ctrl+B 折叠侧边栏
                     e.preventDefault();
@@ -515,16 +369,10 @@ class CryptoDashboard {
         }
         
         // 数字键切换面板
-        if (e.key >= '1' && e.key <= '8' && !e.ctrlKey && !e.metaKey) {
+        if (e.key >= '1' && e.key <= '2' && !e.ctrlKey && !e.metaKey) {
             const tabMappings = {
-                '1': 'market',
-                '2': 'sentiment', 
-                '3': 'analysis',
-                '4': 'options',
-                '5': 'portfolio',
-                '6': 'discovery',
-                '7': 'defi',
-                '8': 'nft'
+                '1': 'options',
+                '2': 'sentiment'
             };
             
             const targetTab = tabMappings[e.key];
@@ -536,16 +384,12 @@ class CryptoDashboard {
 
     showLoading() {
         const loading = document.getElementById('loading');
-        const cryptoGrid = document.getElementById('crypto-grid');
         if (loading) loading.style.display = 'flex';
-        if (cryptoGrid) cryptoGrid.style.display = 'none';
     }
 
     hideLoading() {
         const loading = document.getElementById('loading');
-        const cryptoGrid = document.getElementById('crypto-grid');
         if (loading) loading.style.display = 'none';
-        if (cryptoGrid) cryptoGrid.style.display = 'grid';
     }
 
     showError() {
@@ -591,7 +435,7 @@ class CryptoDashboard {
 
     startAutoUpdate() {
         this.autoUpdateTimer = setInterval(() => {
-            this.loadData();
+            this.loadOptionsData();
         }, this.updateInterval);
     }
 

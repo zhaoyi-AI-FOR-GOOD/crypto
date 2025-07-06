@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>真实数据测试</title>
+    <style>
+        body { font-family: monospace; background: #000; color: #0f0; padding: 20px; }
+        .log { margin: 5px 0; }
+        .error { color: #f00; }
+        .success { color: #0f0; }
+        .info { color: #ff0; }
+        button { background: #333; color: #0f0; border: 1px solid #0f0; padding: 10px 20px; margin: 10px 0; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>真实数据加载测试</h1>
+    <button onclick="testRealDataLoad()">测试真实数据加载</button>
+    <div id="log"></div>
+
+    <script>
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : 'info';
+            logDiv.innerHTML += `<div class="log ${className}">[${new Date().toLocaleTimeString()}] ${message}</div>`;
+            console.log(message);
+        }
+
+        async function testRealDataLoad() {
+            log('开始测试真实数据加载...', 'info');
+            
+            try {
+                // Step 1: 获取BTC价格
+                log('Step 1: 获取BTC价格...', 'info');
+                const btcResponse = await fetch('https://www.deribit.com/api/v2/public/ticker?instrument_name=BTC-PERPETUAL');
+                const btcData = await btcResponse.json();
+                const btcPrice = btcData.result.last_price;
+                log(`✓ BTC价格: $${btcPrice}`, 'success');
+
+                // Step 2: 获取期权合约
+                log('Step 2: 获取期权合约...', 'info');
+                const instrumentsResponse = await fetch('https://www.deribit.com/api/v2/public/get_instruments?currency=BTC&kind=option&expired=false');
+                const instrumentsData = await instrumentsResponse.json();
+                const instruments = instrumentsData.result;
+                log(`✓ 期权合约总数: ${instruments.length}`, 'success');
+                
+                // Step 3: 筛选合理行权价
+                const minStrike = btcPrice * 0.5;
+                const maxStrike = btcPrice * 1.5;
+                log(`合理行权价范围: $${minStrike.toFixed(0)} - $${maxStrike.toFixed(0)}`, 'info');
+                
+                const validInstruments = instruments.filter(inst => 
+                    inst.strike >= minStrike && inst.strike <= maxStrike
+                );
+                log(`✓ 合理行权价期权数: ${validInstruments.length}`, 'success');
+
+                // Step 4: 获取期权报价
+                log('Step 4: 获取期权报价...', 'info');
+                const bookResponse = await fetch('https://www.deribit.com/api/v2/public/get_book_summary_by_currency?currency=BTC&kind=option');
+                const bookData = await bookResponse.json();
+                const books = bookData.result;
+                log(`✓ 期权报价总数: ${books.length}`, 'success');
+
+                // Step 5: 合并数据
+                log('Step 5: 合并数据...', 'info');
+                const instrumentMap = new Map();
+                validInstruments.forEach(inst => {
+                    instrumentMap.set(inst.instrument_name, inst);
+                });
+
+                let validOptionsCount = 0;
+                const optionsData = new Map();
+                
+                books.forEach(book => {
+                    const inst = instrumentMap.get(book.instrument_name);
+                    if (inst && book.bid_price > 0 && book.ask_price > 0 && book.bid_price < book.ask_price) {
+                        optionsData.set(book.instrument_name, {
+                            instrument_name: book.instrument_name,
+                            option_type: inst.option_type,
+                            strike: inst.strike,
+                            expiry: inst.instrument_name.split('-')[1],
+                            bid: book.bid_price,
+                            ask: book.ask_price,
+                            volume: book.volume || 0
+                        });
+                        validOptionsCount++;
+                    }
+                });
+
+                log(`✓ 有效期权数据: ${validOptionsCount}`, 'success');
+
+                // Step 6: 显示样本数据
+                log('Step 6: 样本期权数据:', 'info');
+                let count = 0;
+                for (const [name, option] of optionsData) {
+                    if (count < 10) {
+                        log(`  ${option.instrument_name}: ${option.option_type.toUpperCase()}, 行权价=$${option.strike}, 买价=${option.bid}, 卖价=${option.ask}, 量=${option.volume}`, 'info');
+                        count++;
+                    }
+                }
+
+                // Step 7: 简单套利计算测试
+                log('Step 7: 套利计算测试...', 'info');
+                
+                // 按行权价分组
+                const grouped = new Map();
+                for (const option of optionsData.values()) {
+                    const key = `${option.strike}|${option.expiry}`;
+                    if (!grouped.has(key)) {
+                        grouped.set(key, { calls: [], puts: [] });
+                    }
+                    if (option.option_type === 'call') {
+                        grouped.get(key).calls.push(option);
+                    } else {
+                        grouped.get(key).puts.push(option);
+                    }
+                }
+
+                log(`期权配对组数: ${grouped.size}`, 'info');
+
+                let arbitrageCount = 0;
+                let checkedPairs = 0;
+                for (const [key, group] of grouped) {
+                    if (checkedPairs >= 5) break; // 只测试前5对
+                    
+                    const call = group.calls[0];
+                    const put = group.puts[0];
+                    
+                    if (!call || !put || !call.bid || !put.ask) continue;
+                    
+                    checkedPairs++;
+                    
+                    // 转换套利计算
+                    const stockCost = btcPrice;
+                    const putCost = put.ask;
+                    const callIncome = call.bid;
+                    const transactionCosts = 1.5; // 3 * 0.5
+                    
+                    const initialInvestment = stockCost + putCost - callIncome + transactionCosts;
+                    const maturityValue = call.strike;
+                    const profit = maturityValue - initialInvestment;
+                    
+                    log(`配对 ${checkedPairs} (${key}): 行权价=$${call.strike}, 利润=$${profit.toFixed(2)}`, 
+                        profit > -1000 ? 'success' : 'info');
+                    
+                    if (profit > -1000) { // 使用相同的阈值
+                        arbitrageCount++;
+                    }
+                }
+
+                log(`✓ 测试完成! 检查了${checkedPairs}对期权，发现${arbitrageCount}个潜在套利机会`, 'success');
+                
+            } catch (error) {
+                log(`❌ 错误: ${error.message}`, 'error');
+                console.error('详细错误:', error);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deribit API 测试</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #000; color: #fff; }
+        .test-result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background: #1a5d1a; }
+        .error { background: #5d1a1a; }
+        .info { background: #1a1a5d; }
+        .data { background: #333; max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <h1>Deribit API 连接测试</h1>
+    <button onclick="testDeribitAPI()">测试 Deribit API</button>
+    <div id="results"></div>
+
+    <script>
+        async function testDeribitAPI() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="info test-result">开始测试 Deribit API...</div>';
+            
+            try {
+                // 测试1: 获取BTC价格
+                resultsDiv.innerHTML += '<div class="info test-result">测试1: 获取BTC永续合约价格...</div>';
+                const btcResponse = await fetch('https://www.deribit.com/api/v2/public/ticker?instrument_name=BTC-PERPETUAL');
+                
+                if (btcResponse.ok) {
+                    const btcData = await btcResponse.json();
+                    resultsDiv.innerHTML += `<div class="success test-result">✓ BTC价格获取成功: $${btcData.result.last_price}</div>`;
+                    
+                    // 测试2: 获取期权合约列表
+                    resultsDiv.innerHTML += '<div class="info test-result">测试2: 获取BTC期权合约...</div>';
+                    const optionsResponse = await fetch('https://www.deribit.com/api/v2/public/get_instruments?currency=BTC&kind=option&expired=false');
+                    
+                    if (optionsResponse.ok) {
+                        const optionsData = await optionsResponse.json();
+                        const options = optionsData.result.slice(0, 5); // 只显示前5个
+                        resultsDiv.innerHTML += `<div class="success test-result">✓ 期权合约获取成功: 共${optionsData.result.length}个合约</div>`;
+                        resultsDiv.innerHTML += `<div class="data test-result">前5个合约: <pre>${JSON.stringify(options.map(o => o.instrument_name), null, 2)}</pre></div>`;
+                        
+                        // 测试3: 获取期权报价
+                        resultsDiv.innerHTML += '<div class="info test-result">测试3: 获取期权市场报价...</div>';
+                        const bookResponse = await fetch('https://www.deribit.com/api/v2/public/get_book_summary_by_currency?currency=BTC&kind=option');
+                        
+                        if (bookResponse.ok) {
+                            const bookData = await bookResponse.json();
+                            const validQuotes = bookData.result.filter(q => q.bid_price > 0 && q.ask_price > 0).slice(0, 3);
+                            resultsDiv.innerHTML += `<div class="success test-result">✓ 期权报价获取成功: 有效报价${validQuotes.length}个</div>`;
+                            resultsDiv.innerHTML += `<div class="data test-result">示例报价: <pre>${JSON.stringify(validQuotes.map(q => ({
+                                instrument: q.instrument_name,
+                                bid: q.bid_price,
+                                ask: q.ask_price,
+                                volume: q.volume
+                            })), null, 2)}</pre></div>`;
+                            
+                            resultsDiv.innerHTML += '<div class="success test-result">🎉 所有API测试通过！现在可以使用真实数据进行套利扫描。</div>';
+                        } else {
+                            throw new Error('期权报价API调用失败');
+                        }
+                    } else {
+                        throw new Error('期权合约API调用失败');
+                    }
+                } else {
+                    throw new Error('BTC价格API调用失败');
+                }
+            } catch (error) {
+                resultsDiv.innerHTML += `<div class="error test-result">❌ API测试失败: ${error.message}</div>`;
+                console.error('API测试错误:', error);
+            }
+        }
+    </script>
+</body>
+</html>

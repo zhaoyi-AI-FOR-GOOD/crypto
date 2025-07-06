@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>套利数据调试</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #000; color: #fff; }
+        .debug-section { margin: 20px 0; padding: 15px; border: 1px solid #333; border-radius: 5px; }
+        .debug-title { color: #00CFBE; font-weight: bold; margin-bottom: 10px; }
+        .data { background: #111; padding: 10px; border-radius: 3px; font-family: monospace; font-size: 12px; white-space: pre-wrap; }
+        .error { color: #ff4444; }
+        .success { color: #44ff44; }
+        .warning { color: #ffaa44; }
+    </style>
+</head>
+<body>
+    <h1>套利数据解析调试</h1>
+    <button onclick="debugArbitrageData()" style="padding: 10px 20px; background: #00CFBE; color: #000; border: none; border-radius: 5px; cursor: pointer;">开始调试</button>
+    
+    <div id="debug-results"></div>
+
+    <script>
+        async function debugArbitrageData() {
+            const resultsDiv = document.getElementById('debug-results');
+            resultsDiv.innerHTML = '<div class="debug-section"><div class="debug-title">开始调试套利数据解析...</div></div>';
+            
+            try {
+                // 测试1: 获取BTC价格
+                resultsDiv.innerHTML += '<div class="debug-section"><div class="debug-title">步骤1: 获取BTC现货价格</div><div class="data">正在获取...</div></div>';
+                
+                const btcResponse = await fetch('https://www.deribit.com/api/v2/public/ticker?instrument_name=BTC-PERPETUAL');
+                const btcData = await btcResponse.json();
+                const btcPrice = btcData.result.last_price;
+                
+                resultsDiv.innerHTML += `<div class="debug-section"><div class="debug-title success">✓ BTC价格获取成功</div><div class="data">当前价格: $${btcPrice}</div></div>`;
+                
+                // 测试2: 获取期权合约信息
+                resultsDiv.innerHTML += '<div class="debug-section"><div class="debug-title">步骤2: 获取期权合约信息</div><div class="data">正在获取...</div></div>';
+                
+                const instrumentsResponse = await fetch('https://www.deribit.com/api/v2/public/get_instruments?currency=BTC&kind=option&expired=false');
+                const instrumentsData = await instrumentsResponse.json();
+                const instruments = instrumentsData.result.slice(0, 5); // 只看前5个
+                
+                resultsDiv.innerHTML += `<div class="debug-section"><div class="debug-title success">✓ 期权合约信息</div><div class="data">总合约数: ${instrumentsData.result.length}
+
+前5个合约:
+${instruments.map(inst => `
+合约名称: ${inst.instrument_name}
+行权价: ${inst.strike}
+期权类型: ${inst.option_type}
+到期时间戳: ${inst.expiration_timestamp}
+到期日期: ${new Date(inst.expiration_timestamp).toLocaleDateString()}
+`).join('\n---\n')}</div></div>`;
+                
+                // 测试3: 获取期权市场数据
+                resultsDiv.innerHTML += '<div class="debug-section"><div class="debug-title">步骤3: 获取期权市场数据</div><div class="data">正在获取...</div></div>';
+                
+                const bookResponse = await fetch('https://www.deribit.com/api/v2/public/get_book_summary_by_currency?currency=BTC&kind=option');
+                const bookData = await bookResponse.json();
+                const validQuotes = bookData.result.filter(q => 
+                    q.bid_price > 0 && 
+                    q.ask_price > 0 && 
+                    q.bid_price < q.ask_price &&
+                    q.instrument_name.includes('-C')  // 只看Call期权
+                ).slice(0, 3);
+                
+                resultsDiv.innerHTML += `<div class="debug-section"><div class="debug-title success">✓ 期权市场数据</div><div class="data">有效报价总数: ${bookData.result.filter(q => q.bid_price > 0 && q.ask_price > 0).length}
+
+示例Call期权报价:
+${validQuotes.map(q => `
+合约: ${q.instrument_name}
+买价: ${q.bid_price}
+卖价: ${q.ask_price}
+成交量: ${q.volume || 0}
+持仓量: ${q.open_interest || 0}
+隐含波动率: ${q.mark_iv || 0}%
+Delta: ${q.greeks?.delta || 'N/A'}
+`).join('\n---\n')}</div></div>`;
+                
+                // 测试4: 模拟套利计算
+                resultsDiv.innerHTML += '<div class="debug-section"><div class="debug-title">步骤4: 模拟套利计算</div><div class="data">正在计算...</div></div>';
+                
+                // 找一对相同行权价的Call和Put
+                const sampleStrike = instruments[0].strike;
+                const sampleExpiry = instruments[0].instrument_name.split('-')[1];
+                
+                const callName = `BTC-${sampleExpiry}-${sampleStrike}-C`;
+                const putName = `BTC-${sampleExpiry}-${sampleStrike}-P`;
+                
+                const callQuote = bookData.result.find(q => q.instrument_name === callName);
+                const putQuote = bookData.result.find(q => q.instrument_name === putName);
+                
+                if (callQuote && putQuote && callQuote.bid_price > 0 && putQuote.ask_price > 0) {
+                    // 转换套利计算
+                    const stockCost = btcPrice;
+                    const putCost = putQuote.ask_price;
+                    const callIncome = callQuote.bid_price;
+                    const transactionCosts = 6; // 3笔交易 * $2
+                    
+                    const initialInvestment = stockCost + putCost - callIncome + transactionCosts;
+                    const maturityValue = sampleStrike;
+                    const profit = maturityValue - initialInvestment;
+                    const profitPercent = initialInvestment > 0 ? (profit / initialInvestment) * 100 : 0;
+                    
+                    // 计算到期天数
+                    const expiryDate = new Date(instruments[0].expiration_timestamp);
+                    const today = new Date();
+                    const daysToExpiry = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
+                    
+                    resultsDiv.innerHTML += `<div class="debug-section"><div class="debug-title ${profit > 0 ? 'success' : 'warning'}">套利计算结果</div><div class="data">转换套利示例:
+行权价: $${sampleStrike}
+到期天数: ${daysToExpiry}天
+
+成本分解:
+- 买入BTC现货: $${stockCost}
+- 买入Put期权: $${putCost}
+- 卖出Call期权: -$${callIncome}
+- 交易费用: $${transactionCosts}
+总投资: $${initialInvestment.toFixed(2)}
+
+到期收益:
+- 固定收益: $${maturityValue}
+- 净利润: $${profit.toFixed(2)}
+- 利润率: ${profitPercent.toFixed(2)}%
+
+${profit > 10 ? '✓ 存在套利机会!' : profit > 0 ? '? 微小套利机会' : '✗ 无套利机会'}</div></div>`;
+                } else {
+                    resultsDiv.innerHTML += `<div class="debug-section"><div class="debug-title warning">⚠ 套利计算</div><div class="data">未找到匹配的Call/Put对:
+寻找的合约: ${callName}, ${putName}
+Call报价: ${callQuote ? '找到' : '未找到'}
+Put报价: ${putQuote ? '找到' : '未找到'}</div></div>`;
+                }
+                
+                resultsDiv.innerHTML += '<div class="debug-section"><div class="debug-title success">🎉 调试完成！数据解析正确，可以进行真实套利扫描。</div></div>';
+                
+            } catch (error) {
+                resultsDiv.innerHTML += `<div class="debug-section"><div class="debug-title error">❌ 调试失败</div><div class="data">${error.message}\n\n${error.stack}</div></div>`;
+            }
+        }
+    </script>
+</body>
+</html>
